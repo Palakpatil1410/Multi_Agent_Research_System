@@ -1,0 +1,46 @@
+# Core LangChain
+langchain>=0.2.0
+langchain-core>=0.2.0
+langchain-community>=0.2.0
+
+# Gemini
+langchain-google-genai
+
+# LangGraph
+langgraph
+
+# Search Tool
+tavily-python>=0.3.0
+
+# Web Scraping
+beautifulsoup4>=4.12.0
+requests>=2.31.0
+lxml>=4.9.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Data Validation
+pydantic>=2.0.0
+
+# Token Counting
+tiktoken>=0.6.0
+
+# Async Support
+aiohttp
+
+# Logging and Utilities
+tenacity>=8.2.0
+
+# Optional Backend API
+fastapi
+uvicorn
+
+# Optional Notebook Testing
+jupyter
+
+# Optional Output Formatting
+rich>=13.7.0
+
+# Optional JSON Handling
+orjson>=3.9.0
