@@ -130,6 +130,10 @@ Research Gathered:
 Structure the report as:
 - Introduction
 - Key Findings (minimum 3 well explained points)
+- Methodology (explain how you gathered and analyzed the information)
+- Analysis
+- Results (what does the information suggest about the topic?)
+- Limitations 
 - Conclusion
 - Sources (list all URLs found in the research)
 
