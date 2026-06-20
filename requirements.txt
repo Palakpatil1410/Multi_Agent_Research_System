@@ -44,3 +44,4 @@ rich>=13.7.0
 
 # Optional JSON Handling
 orjson>=3.9.0
+python-docx
