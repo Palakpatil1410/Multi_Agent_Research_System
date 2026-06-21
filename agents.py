@@ -14,14 +14,14 @@ load_dotenv()
 # Add to .env file: GROQ_API_KEY=your_key_here
 # ─────────────────────────────────────────────
 llm = ChatGroq(
-    model="llama-3.3-70b-versatile",
+    model="llama-3.1-8b-instant",  # lighter model, separate quota pool
     temperature=0,
 )
 
 
 # ─────────────────────────────────────────────
 # Rate limit helper — waits between API calls
-# Groq free tier: 30 req/min → 1 call per 2 sec
+# Groq free tier: 30 req/min → safe with 2-3s delay
 # ─────────────────────────────────────────────
 def safe_invoke(chain_or_agent, inputs: dict, delay: float = 2.0):
     """Invoke a chain or agent with a small delay to avoid Groq rate limits."""
