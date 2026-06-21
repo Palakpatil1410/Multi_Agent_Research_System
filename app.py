@@ -4,7 +4,7 @@ import io
 from docx import Document as DocxDocument
 from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from agents import build_reader_agent, build_search_agent, writer_chain, critic_chain
+from agents import build_reader_agent, build_search_agent, writer_chain, critic_chain, safe_invoke
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -498,9 +498,9 @@ if st.session_state.running and not st.session_state.done:
     # ── Step 1: Search ──
     with st.spinner("🔍  Search Agent is working…"):
         search_agent = build_search_agent()
-        sr = search_agent.invoke({
+        sr = safe_invoke(search_agent, {
             "messages": [("user", f"Find recent, reliable and detailed information about: {topic_val}")]
-        })
+        }, delay=2.0)
         results["search"] = sr["messages"][-1].content
         st.session_state.results = dict(results)
     st.rerun() if False else None
@@ -508,13 +508,13 @@ if st.session_state.running and not st.session_state.done:
     # ── Step 2: Reader ──
     with st.spinner("📄  Reader Agent is scraping top resources…"):
         reader_agent = build_reader_agent()
-        rr = reader_agent.invoke({
+        rr = safe_invoke(reader_agent, {
             "messages": [("user",
                 f"Based on the following search results about '{topic_val}', "
-                f"pick the most relevant URL and scrape it for deeper content.\n\n"
+                f"pick ONLY the single most relevant URL and scrape it ONCE.\n\n"
                 f"Search Results:\n{results['search'][:800]}"
             )]
-        })
+        }, delay=3.0)
         results["reader"] = rr["messages"][-1].content
         st.session_state.results = dict(results)
 
@@ -524,17 +524,17 @@ if st.session_state.running and not st.session_state.done:
             f"SEARCH RESULTS:\n{results['search']}\n\n"
             f"DETAILED SCRAPED CONTENT:\n{results['reader']}"
         )
-        results["writer"] = writer_chain.invoke({
+        results["writer"] = safe_invoke(writer_chain, {
             "topic": topic_val,
             "research": research_combined
-        })
+        }, delay=3.0)
         st.session_state.results = dict(results)
 
     # ── Step 4: Critic ──
     with st.spinner("🧐  Critic is reviewing the report…"):
-        results["critic"] = critic_chain.invoke({
+        results["critic"] = safe_invoke(critic_chain, {
             "report": results["writer"]
-        })
+        }, delay=3.0)
         st.session_state.results = dict(results)
 
     st.session_state.running = False

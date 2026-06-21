@@ -1,3 +1,4 @@
+import time
 from langgraph.prebuilt import create_react_agent
 from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
@@ -8,14 +9,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # ─────────────────────────────────────────────
-# Model Setup
-# Get your free API key → https://aistudio.google.com/app/apikey
-# Add to .env file:  GOOGLE_API_KEY=your_key_here
+# Model Setup — Groq free tier
+# Get your free API key → https://console.groq.com
+# Add to .env file: GROQ_API_KEY=your_key_here
 # ─────────────────────────────────────────────
 llm = ChatGroq(
     model="llama-3.3-70b-versatile",
     temperature=0,
 )
+
+
+# ─────────────────────────────────────────────
+# Rate limit helper — waits between API calls
+# Groq free tier: 30 req/min → 1 call per 2 sec
+# ─────────────────────────────────────────────
+def safe_invoke(chain_or_agent, inputs: dict, delay: float = 2.0):
+    """Invoke a chain or agent with a small delay to avoid Groq rate limits."""
+    time.sleep(delay)
+    return chain_or_agent.invoke(inputs)
 
 
 # ─────────────────────────────────────────────
@@ -28,7 +39,7 @@ def build_search_agent():
         tools=[web_search],
         prompt=(
             "You are a research assistant specialized in finding high-quality "
-            "information on the web. Use the web_search tool to find relevant "
+            "information on the web. Use the web_search tool ONCE to find relevant "
             "sources, facts, and data about the given topic. Return a list of "
             "useful URLs and brief summaries of what each page contains."
         ),
@@ -44,10 +55,10 @@ def build_reader_agent():
         model=llm,
         tools=[scrape_url],
         prompt=(
-            "You are a web content extractor. Given a list of URLs, use the "
-            "scrape_url tool to visit each page and extract the most important "
-            "and relevant information. Focus on facts, data, quotes, and key "
-            "insights. Return well-organized notes from each source."
+            "You are a web content extractor. Pick ONLY the single most relevant "
+            "URL from the search results and use the scrape_url tool ONCE to extract "
+            "the most important information. Focus on facts, data, and key insights. "
+            "Do NOT scrape more than one URL. Return well-organized notes."
         ),
     )
 
@@ -74,8 +85,6 @@ Research Gathered:
 Structure the report as:
 - Introduction
 - Key Findings (minimum 3 well-explained points)
-- Recommendations (if applicable)
-- Limitations (if applicable)
 - Conclusion
 - Sources (list all URLs found in the research)
 
