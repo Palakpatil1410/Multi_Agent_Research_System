@@ -1,3 +1,5 @@
+from turtle import st
+
 from agents import build_reader_agent , build_search_agent , writer_chain , critic_chain
 
 def run_research_pipeline(topic : str) -> dict:
@@ -16,6 +18,7 @@ def run_research_pipeline(topic : str) -> dict:
     state["search_results"] = search_result['messages'][-1].content
 
     print("\n search result ",state['search_results'])
+    st.success("✅ Search Agent done!")
 
     #step 2 - reader agent 
     print("\n"+" ="*50)
@@ -34,7 +37,7 @@ def run_research_pipeline(topic : str) -> dict:
     state['scraped_content'] = reader_result['messages'][-1].content
 
     print("\nscraped content: \n", state['scraped_content'])
-
+    st.success("✅ Reader Agent done!")
     #step 3 - writer chain 
 
     print("\n"+" ="*50)
@@ -52,6 +55,7 @@ def run_research_pipeline(topic : str) -> dict:
     })
 
     print("\n Final Report\n",state['report'])
+    st.success("✅ Writer done!")
 
     #critic report 
 
@@ -63,6 +67,7 @@ def run_research_pipeline(topic : str) -> dict:
         "report":state['report']
     })
 
+    st.success("✅ Critic done!")
     print("\n critic report \n", state['feedback'])
 
     return state

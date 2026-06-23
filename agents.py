@@ -14,14 +14,13 @@ load_dotenv()
 # Add to .env file: GROQ_API_KEY=your_key_here
 # ─────────────────────────────────────────────
 llm = ChatGroq(
-    model="llama-3.1-8b-instant",  # lighter model, separate quota pool
+    model="llama-3.1-8b-instant",
     temperature=0,
 )
 
 
 # ─────────────────────────────────────────────
 # Rate limit helper — waits between API calls
-# Groq free tier: 30 req/min → safe with 2-3s delay
 # ─────────────────────────────────────────────
 def safe_invoke(chain_or_agent, inputs: dict, delay: float = 2.0):
     """Invoke a chain or agent with a small delay to avoid Groq rate limits."""
@@ -31,7 +30,6 @@ def safe_invoke(chain_or_agent, inputs: dict, delay: float = 2.0):
 
 # ─────────────────────────────────────────────
 # Agent 1 — Web Search Agent
-# Searches the web for relevant URLs and summaries
 # ─────────────────────────────────────────────
 def build_search_agent():
     return create_react_agent(
@@ -48,7 +46,6 @@ def build_search_agent():
 
 # ─────────────────────────────────────────────
 # Agent 2 — Scraper / Reader Agent
-# Visits URLs and extracts detailed content
 # ─────────────────────────────────────────────
 def build_reader_agent():
     return create_react_agent(
@@ -65,7 +62,6 @@ def build_reader_agent():
 
 # ─────────────────────────────────────────────
 # Chain 3 — Writer Chain
-# Turns raw research into a structured report
 # ─────────────────────────────────────────────
 writer_prompt = ChatPromptTemplate.from_messages([
     (
@@ -97,7 +93,6 @@ writer_chain = writer_prompt | llm | StrOutputParser()
 
 # ─────────────────────────────────────────────
 # Chain 4 — Critic Chain
-# Reviews and scores the written report
 # ─────────────────────────────────────────────
 critic_prompt = ChatPromptTemplate.from_messages([
     (
@@ -130,3 +125,33 @@ One line verdict:
 ])
 
 critic_chain = critic_prompt | llm | StrOutputParser()
+
+
+# ─────────────────────────────────────────────
+# Chain 5 — Q&A Chain
+# Answers user questions based on research context
+# ─────────────────────────────────────────────
+qa_prompt = ChatPromptTemplate.from_messages([
+    (
+        "system",
+        "You are a helpful research assistant. Answer the user's question "
+        "based ONLY on the research report and context provided below. "
+        "Be concise, clear, and accurate. "
+        "If the answer is not found in the research, say so clearly.",
+    ),
+    (
+        "human",
+        """Research Report:
+{report}
+
+Research Context:
+{research}
+
+User Question:
+{question}
+
+Answer the question clearly and concisely based on the research above.""",
+    ),
+])
+
+qa_chain = qa_prompt | llm | StrOutputParser()

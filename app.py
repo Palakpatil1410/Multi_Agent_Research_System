@@ -4,7 +4,7 @@ import io
 from docx import Document as DocxDocument
 from docx.shared import Pt, RGBColor, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from agents import build_reader_agent, build_search_agent, writer_chain, critic_chain, safe_invoke
+from agents import build_reader_agent, build_search_agent, writer_chain, critic_chain, safe_invoke, qa_chain
 
 # ── Page config ──────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -19,7 +19,6 @@ st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap');
 
-/* ── Reset & base ── */
 html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif;
     color: #e8e4dc;
@@ -32,11 +31,9 @@ html, body, [class*="css"] {
         radial-gradient(ellipse 60% 40% at 80% 110%, rgba(255,80,30,0.08) 0%, transparent 55%);
 }
 
-/* ── Hide default streamlit chrome ── */
 #MainMenu, footer, header { visibility: hidden; }
 .block-container { padding: 2rem 3rem 4rem; max-width: 1200px; }
 
-/* ── Hero header ── */
 .hero {
     text-align: center;
     padding: 3.5rem 0 2.5rem;
@@ -61,9 +58,7 @@ html, body, [class*="css"] {
     color: #f0ebe0;
     margin: 0 0 1rem;
 }
-.hero h1 span {
-    color: #ff8c32;
-}
+.hero h1 span { color: #ff8c32; }
 .hero-sub {
     font-size: 1.05rem;
     font-weight: 300;
@@ -73,14 +68,12 @@ html, body, [class*="css"] {
     line-height: 1.65;
 }
 
-/* ── Divider ── */
 .divider {
     height: 1px;
     background: linear-gradient(90deg, transparent, rgba(255,140,50,0.3), transparent);
     margin: 2rem 0;
 }
 
-/* ── Input card ── */
 .input-card {
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,140,50,0.15);
@@ -90,7 +83,6 @@ html, body, [class*="css"] {
     backdrop-filter: blur(8px);
 }
 
-/* ── Streamlit input overrides ── */
 .stTextInput > div > div > input {
     background: rgba(255,255,255,0.05) !important;
     border: 1px solid rgba(255,140,50,0.25) !important;
@@ -114,7 +106,6 @@ html, body, [class*="css"] {
     font-weight: 500 !important;
 }
 
-/* ── Button ── */
 .stButton > button {
     background: linear-gradient(135deg, #ff8c32 0%, #ff5a1a 100%) !important;
     color: #0a0a0f !important;
@@ -135,11 +126,8 @@ html, body, [class*="css"] {
     box-shadow: 0 8px 28px rgba(255,140,50,0.4) !important;
     opacity: 0.95 !important;
 }
-.stButton > button:active {
-    transform: translateY(0) !important;
-}
+.stButton > button:active { transform: translateY(0) !important; }
 
-/* ── Pipeline step cards ── */
 .step-card {
     background: rgba(255,255,255,0.03);
     border: 1px solid rgba(255,255,255,0.07);
@@ -200,7 +188,6 @@ html, body, [class*="css"] {
 .status-running  { color: #ff8c32; }
 .status-done     { color: #50c878; }
 
-/* ── Result panels ── */
 .result-panel {
     background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,255,255,0.07);
@@ -228,7 +215,6 @@ html, body, [class*="css"] {
     font-family: 'DM Sans', sans-serif;
 }
 
-/* ── Report & feedback panels ── */
 .report-panel {
     background: rgba(255,255,255,0.025);
     border: 1px solid rgba(255,140,50,0.2);
@@ -260,10 +246,27 @@ html, body, [class*="css"] {
     border-bottom: 1px solid rgba(80,200,120,0.15);
 }
 
-/* ── Progress text ── */
+/* ── Chat section ── */
+.chat-section {
+    background: rgba(255,255,255,0.02);
+    border: 1px solid rgba(255,140,50,0.15);
+    border-radius: 16px;
+    padding: 2rem 2.5rem;
+    margin-top: 1rem;
+}
+.chat-label {
+    font-family: 'DM Mono', monospace;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: #ff8c32;
+    margin-bottom: 1.2rem;
+    padding-bottom: 0.7rem;
+    border-bottom: 1px solid rgba(255,140,50,0.15);
+}
+
 .stSpinner > div { color: #ff8c32 !important; }
 
-/* ── Expander ── */
 details summary {
     font-family: 'DM Mono', monospace !important;
     font-size: 0.75rem !important;
@@ -272,7 +275,6 @@ details summary {
     cursor: pointer;
 }
 
-/* ── Section heading ── */
 .section-heading {
     font-family: 'Syne', sans-serif;
     font-size: 1.3rem;
@@ -281,7 +283,6 @@ details summary {
     margin: 2rem 0 1rem;
 }
 
-/* ── Toast-style notice ── */
 .notice {
     font-family: 'DM Mono', monospace;
     font-size: 0.72rem;
@@ -297,63 +298,54 @@ details summary {
 # ── Helper: convert markdown report → .docx bytes ────────────────────────────
 def build_docx(topic: str, report_md: str, feedback_md: str) -> bytes:
     doc = DocxDocument()
-
-    # ── Page margins (1 inch) ──
     for section in doc.sections:
         section.top_margin    = Inches(1)
         section.bottom_margin = Inches(1)
         section.left_margin   = Inches(1.2)
         section.right_margin  = Inches(1.2)
 
-    # ── Title ──
     title_p = doc.add_paragraph()
     title_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = title_p.add_run("ResearchMind Report")
     run.bold = True
     run.font.size = Pt(24)
-    run.font.color.rgb = RGBColor(0xFF, 0x8C, 0x32)  # orange
+    run.font.color.rgb = RGBColor(0xFF, 0x8C, 0x32)
 
-    # ── Topic subtitle ──
     sub_p = doc.add_paragraph()
     sub_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     sub_run = sub_p.add_run(f"Topic: {topic}")
     sub_run.font.size = Pt(12)
     sub_run.font.color.rgb = RGBColor(0x70, 0x68, 0x60)
 
-    # ── Date ──
     date_p = doc.add_paragraph()
     date_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     date_run = date_p.add_run(f"Generated: {time.strftime('%B %d, %Y')}")
     date_run.font.size = Pt(10)
     date_run.font.color.rgb = RGBColor(0x90, 0x88, 0x80)
 
-    doc.add_paragraph()  # spacer
+    doc.add_paragraph()
 
-    # ── Parse and add report lines ──
     for line in report_md.splitlines():
         line = line.strip()
         if not line:
             doc.add_paragraph()
             continue
-
         if line.startswith("# "):
-            p = doc.add_heading(line[2:], level=1)
+            doc.add_heading(line[2:], level=1)
         elif line.startswith("## "):
-            p = doc.add_heading(line[3:], level=2)
+            doc.add_heading(line[3:], level=2)
         elif line.startswith("### "):
-            p = doc.add_heading(line[4:], level=3)
+            doc.add_heading(line[4:], level=3)
         elif line.startswith("- ") or line.startswith("* "):
-            p = doc.add_paragraph(line[2:], style="List Bullet")
+            doc.add_paragraph(line[2:], style="List Bullet")
         elif line[0].isdigit() and ". " in line[:4]:
-            p = doc.add_paragraph(line, style="List Number")
+            doc.add_paragraph(line, style="List Number")
         else:
             p = doc.add_paragraph(line)
             p.style.font.size = Pt(11)
 
-    # ── Critic feedback section ──
     doc.add_page_break()
     doc.add_heading("Critic Feedback", level=1)
-
     for line in feedback_md.splitlines():
         line = line.strip()
         if not line:
@@ -364,7 +356,6 @@ def build_docx(topic: str, report_md: str, feedback_md: str) -> bytes:
         else:
             doc.add_paragraph(line)
 
-    # ── Footer note ──
     doc.add_paragraph()
     footer_p = doc.add_paragraph()
     footer_p.alignment = WD_ALIGN_PARAGRAPH.CENTER
@@ -373,7 +364,6 @@ def build_docx(topic: str, report_md: str, feedback_md: str) -> bytes:
     fr.font.color.rgb = RGBColor(0x90, 0x88, 0x80)
     fr.italic = True
 
-    # ── Write to bytes ──
     buf = io.BytesIO()
     doc.save(buf)
     buf.seek(0)
@@ -406,6 +396,9 @@ for key in ("results", "running", "done"):
     if key not in st.session_state:
         st.session_state[key] = {} if key == "results" else False
 
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
 
 # ── Hero ──────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -435,7 +428,6 @@ with col_input:
     run_btn = st.button("⚡  Run Research Pipeline", use_container_width=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # Example chips
     st.markdown("""
     <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1.5rem;">
         <span style="font-family:'DM Mono',monospace;font-size:0.68rem;color:#605850;letter-spacing:0.1em;">TRY →</span>
@@ -460,17 +452,15 @@ with col_pipeline:
     st.markdown('<div class="section-heading">Pipeline</div>', unsafe_allow_html=True)
 
     r = st.session_state.results
-    done = st.session_state.done
 
     def s(step):
         if not r:
             return "waiting"
         steps = ["search", "reader", "writer", "critic"]
-        completed = list(r.keys())
         if step in r:
             return "done"
         if st.session_state.running:
-            for i, k in enumerate(steps):
+            for k in steps:
                 if k not in r:
                     return "running" if k == step else "waiting"
         return "waiting"
@@ -489,6 +479,7 @@ if run_btn:
         st.session_state.results = {}
         st.session_state.running = True
         st.session_state.done = False
+        st.session_state.chat_history = []  # reset chat on new research
         st.rerun()
 
 if st.session_state.running and not st.session_state.done:
@@ -503,7 +494,7 @@ if st.session_state.running and not st.session_state.done:
         }, delay=2.0)
         results["search"] = sr["messages"][-1].content
         st.session_state.results = dict(results)
-    st.rerun() if False else None
+    st.rerun() if False else None # pipeline continues below
 
     # ── Step 2: Reader ──
     with st.spinner("📄  Reader Agent is scraping top resources…"):
@@ -549,7 +540,6 @@ if r:
     st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
     st.markdown('<div class="section-heading">Results</div>', unsafe_allow_html=True)
 
-    # Raw outputs in expanders
     if "search" in r:
         with st.expander("🔍 Search Results (raw)", expanded=False):
             st.markdown(f'<div class="result-panel"><div class="result-panel-title">Search Agent Output</div>'
@@ -560,7 +550,6 @@ if r:
             st.markdown(f'<div class="result-panel"><div class="result-panel-title">Reader Agent Output</div>'
                         f'<div class="result-content">{r["reader"]}</div></div>', unsafe_allow_html=True)
 
-    # Final report
     if "writer" in r:
         st.markdown("""
         <div class="report-panel">
@@ -569,9 +558,7 @@ if r:
         st.markdown(r["writer"])
         st.markdown("</div>", unsafe_allow_html=True)
 
-        # ── Download buttons side by side ──────────────────────────────────
         col_md, col_doc = st.columns(2)
-
         with col_md:
             st.download_button(
                 label="⬇  Download Report (.md)",
@@ -580,7 +567,6 @@ if r:
                 mime="text/markdown",
                 use_container_width=True,
             )
-
         with col_doc:
             docx_bytes = build_docx(
                 topic=st.session_state.get("topic_input", "Research"),
@@ -595,7 +581,6 @@ if r:
                 use_container_width=True,
             )
 
-    # Critic feedback
     if "critic" in r:
         st.markdown("""
         <div class="feedback-panel">
@@ -603,6 +588,40 @@ if r:
         """, unsafe_allow_html=True)
         st.markdown(r["critic"])
         st.markdown("</div>", unsafe_allow_html=True)
+
+    # ── Q&A Chat Section ──────────────────────────────────────────────────────
+    if r.get("writer"):
+        st.markdown('<div class="divider"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="section-heading">💬 Ask About This Research</div>',
+                    unsafe_allow_html=True)
+        st.markdown("""
+        <div style="font-size:0.85rem;color:#706860;margin-bottom:1rem;">
+            Ask anything about the research report above — summaries, explanations, comparisons, or follow-up questions.
+        </div>
+        """, unsafe_allow_html=True)
+
+        # display previous chat messages
+        for msg in st.session_state.chat_history:
+            with st.chat_message(msg["role"]):
+                st.markdown(msg["content"])
+
+        # chat input
+        if question := st.chat_input("e.g. What are the key findings? / Explain point 2 in detail..."):
+            # show user message
+            st.session_state.chat_history.append({"role": "user", "content": question})
+            with st.chat_message("user"):
+                st.markdown(question)
+
+            # get answer
+            with st.chat_message("assistant"):
+                with st.spinner("Thinking..."):
+                    answer = safe_invoke(qa_chain, {
+                        "report": r["writer"],
+                        "research": r.get("search", "") + "\n" + r.get("reader", ""),
+                        "question": question
+                    }, delay=2.0)
+                st.markdown(answer)
+                st.session_state.chat_history.append({"role": "assistant", "content": answer})
 
 
 # ── Footer ────────────────────────────────────────────────────────────────────
